@@ -7,7 +7,7 @@ example_url='http://example.webscraping.com/sitemap.xml'
 def download(url,user_agent='wswp',num_retries=2):
     print 'Downloading:',url
     header={'User-Agent':user_agent}
-    request=urllib2.Request(url,user_agent)
+    request=urllib2.Request(url,headers=header)
     try:
             html=urllib2.urlopen(request).read()
     except urllib2.URLError as e:

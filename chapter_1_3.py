@@ -1,18 +1,25 @@
 # -*- coding:utf-8 -*-
 
 import urllib2
+import urlparse
 import re
 import itertools
 import urlparse
+import datetime
 
 example_url='http://example.webscraping.com/sitemap.xml'
 
-def download(url,user_agent='wswp',num_retries=2):
+def download(url,user_agent='wswp',proxy=None,num_retries=2):
     print 'Downloading:',url
     header={'User-Agent':user_agent}
     request=urllib2.Request(url,headers=header)
+
+    opener = urllib2.build_opener()
+    if proxy:
+        proxy_params = {urlparse.urlparse(url).scheme:proxy}
+        opener.add_handler(urllib2.ProxyHandler(proxy_params))
     try:
-            html=urllib2.urlopen(request).read()
+            html=opener.open(request).read()
     except urllib2.URLError as e:
             print 'Downloading error:', e.reason
             html=None
@@ -31,25 +38,10 @@ def crawl_sitemap(url):
     for link in links:
         html=download(link)
 
-'''
-ID遍历爬虫
-
-for page in itertools.count(1):
-    url='http://example.webscraping.com/view/-%d' %page
-    print  "Current Downloading URL : " ,url
-    html=download(url)
-    if html is None:
-        break
-    else:
-        pass
-    ＃以下为改良的程序，实现连续下载5次错误才终止程序
-'''
-
 # maximum number of consecutive download errors allowed
 max_errors = 5
 # current number of consecutive download errors
 num_errors = 0 
-
 
 for page in itertools.count(1):
     url='http://example.webscraping.com/view/-%d' %page
@@ -64,22 +56,6 @@ for page in itertools.count(1):
             # sucess - can scrape the result
             num_errors = 0 
 
-'''
-#  此时的URL是相对路径
-def link_crawler1(seed_url,link_regex):
-    
-    # Crawl from the given seed URL following links matched by link_regex
-
-    crawl_queue = [seed_url]
-    while crawl_queue:
-        url = crawl_queue.pop()
-        html = download(url)
-        # filter for links matching out regular expression
-        for link in get_links(html):
-            if re.match(link_regex,link):
-                crawl_queue.append(link)
-'''
-
 def get_links(html):
     '''
     Return a list of links from html
@@ -88,21 +64,6 @@ def get_links(html):
     webpage_regex = re.compile('<a[^>]+href=["\'](.*?)["\']',re.IGNORECASE)
     # list of all links from the webpage
     return webpage_regex.findall(html)
-
-'''
-# 此时会循环爬虫，因为不同页面之间有联系的
-def link_crawler2(seed_url,link_regex):
-#   Crawl from the given seed URL following links matched by link_regex
-    crawl_queue = [seed_url]
-    while crawl_queue:
-        url = crawl_queue.pop()
-        html = download(url)
-        # filter for links matching out regular expression
-        for link in get_links(html):
-            if re.match(link_regex,link):
-                link=urlparse.urljoin(seed_url,link)
-                crawl_queue.append(link)
-'''
 
 def link_crawler(seed_url,link_regex):
     '''
@@ -113,6 +74,11 @@ def link_crawler(seed_url,link_regex):
     seen = set(crawl_queue)
     while crawl_queue:
         url = crawl_queue.pop()
+        # check url passes robot.txt restrictions
+        if rp.can_fetch(user_agent,url):
+            pass
+        else:
+            print 'Block By robots.txt' ,url
         html = download(url)
         # filter for links matching out regular expression
         for link in get_links(html):
@@ -124,5 +90,52 @@ def link_crawler(seed_url,link_regex):
                 if link not in seen:
                     seen.add(link)
                     crawl_queue.append(link)
-                    
-link_crawler('http://example.webscraping.com','/(view|index)')
+'''
+control delay
+'''
+class Throttle:
+    '''
+    Add a delay between downloads for each domain
+    '''
+    def __init__(self,delay):
+        # amount of delay between download for each domain
+        self.delay=delay
+        # timestamp of when a domain was last accessed
+        self.domains={}
+
+    def wait(self,url):
+        domain = urlparse.urlparse(url).netloc
+        last_accessed = self.domain.get(domain)
+
+        if self.delay>0 and last_accessed is not None:
+            sleep_secs=self.delay - (datetime.datetime.now()-last_accessed).second
+            if sleep_secs > 0:
+                # domain has been accessed recently
+                # so need to sleep
+                time.sleep(sleep_secs)
+        # update the last accessed time
+        self.domains[domain]=datetime.datetime.now()  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
